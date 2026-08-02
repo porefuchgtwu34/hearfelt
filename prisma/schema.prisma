@@ -1,0 +1,211 @@
+// Heartfelt — Love, Relationships & Psychology Community Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  role         String   @default("USER") // USER | ADMIN
+  bio          String?
+  avatarColor  String   @default("rose")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  posts        Post[]
+  comments     Comment[]
+  journal      JournalEntry[]
+  sentMessages   Message[]       @relation("MessageSender")
+  receivedMessages Message[]     @relation("MessageReceiver")
+  conversationsA Conversation[]  @relation("ConvA")
+  conversationsB Conversation[]  @relation("ConvB")
+  likes        Like[]
+  bookmarks    Bookmark[]
+  reactions    Reaction[]
+  notifications Notification[]
+  reportsMade  Report[]  @relation("ReportReporter")
+  contactSent  ContactRequest[]  @relation("ContactFrom")
+  quizResults  QuizResult[]
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // like | comment | message | admin
+  actorId   String?  // who triggered it
+  actorUsername String?
+  postId    String?
+  postTitle String?
+  conversationId String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String
+  reporter    User     @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType  String   // post | comment
+  targetId    String
+  reason      String   // spam | harassment | harmful | off-topic | other
+  detail      String?
+  status      String   @default("open") // open | reviewed | dismissed
+  createdAt   DateTime @default(now())
+
+  @@index([status])
+  @@index([targetType, targetId])
+}
+
+model Post {
+  id         String    @id @default(cuid())
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title      String
+  content    String
+  category   String    @default("relationship") // relationship | self-love | behaviour | psychology | heartbreak
+  mood       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  comments   Comment[]
+  likes      Like[]
+  bookmarks  Bookmark[]
+  reactions  Reaction[]
+
+  @@index([category])
+  @@index([createdAt])
+  @@index([authorId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId])
+  @@index([authorId])
+}
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  mood      String?
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  userAId   String
+  userA     User      @relation("ConvA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId   String
+  userB     User      @relation("ConvB", fields: [userBId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId     String
+  receiver       User         @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  content        String
+  read           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  type      String   // heart | fire | hug | think
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId, type])
+  @@index([postId])
+}
+
+model ContactRequest {
+  id        String   @id @default(cuid())
+  fromId    String
+  from      User     @relation("ContactFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([fromId])
+}
+
+model QuizResult {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizType  String
+  score     Int
+  answers   Json
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
