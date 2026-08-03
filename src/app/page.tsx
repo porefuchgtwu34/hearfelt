@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { OnboardingTip } from "@/components/onboarding-tip";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/avatar";
 import { api, timeAgo } from "@/lib/client";
 import { Heart, BookOpen, MessageCircle, Sparkles, Quote } from "lucide-react";
@@ -31,6 +31,7 @@ function FeedPlaceholder() {
       <div className="text-center py-16 space-y-3">
         <Heart className="h-10 w-10 text-primary/40 mx-auto" />
         <p className="text-muted-foreground">No posts yet. Be the first to share.</p>
+        <p className="text-xs text-muted-foreground">Connect Postgres and run the seed to populate data.</p>
       </div>
     );
   }
@@ -40,10 +41,16 @@ function FeedPlaceholder() {
       {posts.map((p) => (
         <Card key={p.id}>
           <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
-            <Avatar username={p.author?.username || "?") } color={p.author?.avatarColor || "rose"} size={36} />
+            <Avatar
+              username={p.author?.username || "?"}
+              color={p.author?.avatarColor || "rose"}
+              size={36}
+            />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm">{p.author?.username}</p>
-              <p className="text-xs text-muted-foreground">{timeAgo(p.createdAt)} · {p.category}</p>
+              <p className="text-xs text-muted-foreground">
+                {timeAgo(p.createdAt)} · {p.category}
+              </p>
             </div>
           </CardHeader>
           <CardContent>
@@ -60,7 +67,15 @@ function FeedPlaceholder() {
   );
 }
 
-function ViewShell({ title, icon: Icon, children }: { title: string; icon: any; children?: React.ReactNode }) {
+function ViewShell({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: any;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="flex items-center gap-2 mb-6">
@@ -72,8 +87,30 @@ function ViewShell({ title, icon: Icon, children }: { title: string; icon: any; 
   );
 }
 
+function QuotesMini() {
+  const [quotes, setQuotes] = useState<any[]>([]);
+  useEffect(() => {
+    api<{ quotes: any[] }>("/api/quotes?count=4")
+      .then((d) => setQuotes(d.quotes || []))
+      .catch(() => {});
+  }, []);
+  if (!quotes.length) return <p className="text-muted-foreground">Loading quotes…</p>;
+  return (
+    <div className="space-y-4">
+      {quotes.map((q, i) => (
+        <Card key={i}>
+          <CardContent className="pt-6">
+            <p className="italic text-foreground/90">“{q.text}”</p>
+            <p className="mt-2 text-sm text-muted-foreground">— {q.author}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const { view, setAuthOpen } = useAppStore();
   const [unread, setUnread] = useState(0);
 
@@ -107,17 +144,21 @@ export default function Home() {
         )}
         {view === "journal" && (
           <ViewShell title="Journal" icon={BookOpen}>
-            <p className="text-muted-foreground">Private mood journal — connect a database and sign in to use fully.</p>
+            <p className="text-muted-foreground">
+              Private mood journal — connect Postgres and sign in to use fully.
+            </p>
           </ViewShell>
         )}
         {view === "messages" && (
           <ViewShell title="Messages" icon={MessageCircle}>
-            <p className="text-muted-foreground">Direct messages will appear here once the DB is connected.</p>
+            <p className="text-muted-foreground">
+              Direct messages will appear here once the DB is connected.
+            </p>
           </ViewShell>
         )}
         {view === "quiz" && (
           <ViewShell title="Love Language Quiz" icon={Sparkles}>
-            <p className="text-muted-foreground">Quiz API is ready. Full interactive UI coming next.</p>
+            <p className="text-muted-foreground">Quiz API is ready. Full interactive UI next.</p>
           </ViewShell>
         )}
         {view === "quotes" && (
@@ -140,28 +181,6 @@ export default function Home() {
           </Button>
         </div>
       )}
-    </div>
-  );
-}
-
-function QuotesMini() {
-  const [quotes, setQuotes] = useState<any[]>([]);
-  useEffect(() => {
-    api<{ quotes: any[] }>("/api/quotes?count=4")
-      .then((d) => setQuotes(d.quotes || []))
-      .catch(() => {});
-  }, []);
-  if (!quotes.length) return <p className="text-muted-foreground">Loading quotes…</p>;
-  return (
-    <div className="space-y-4">
-      {quotes.map((q, i) => (
-        <Card key={i}>
-          <CardContent className="pt-6">
-            <p className="italic text-foreground/90">“{q.text}”</p>
-            <p className="mt-2 text-sm text-muted-foreground">— {q.author}</p>
-          </CardContent>
-        </Card>
-      ))}
     </div>
   );
 }
