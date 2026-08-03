@@ -6,6 +6,7 @@ import { useAppStore } from "@/store/app-store";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { OnboardingTip } from "@/components/onboarding-tip";
+import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/avatar";
@@ -25,13 +26,23 @@ function FeedPlaceholder() {
   }, []);
 
   if (loading) return <p className="text-muted-foreground text-center py-12">Loading feed…</p>;
-  if (error) return <p className="text-destructive text-center py-12">{error}</p>;
+  if (error)
+    return (
+      <div className="text-center py-12 space-y-2">
+        <p className="text-destructive">{error}</p>
+        <p className="text-xs text-muted-foreground">
+          If this is a database error, add DATABASE_URL in Vercel and run migrations.
+        </p>
+      </div>
+    );
   if (!posts.length) {
     return (
       <div className="text-center py-16 space-y-3">
         <Heart className="h-10 w-10 text-primary/40 mx-auto" />
         <p className="text-muted-foreground">No posts yet. Be the first to share.</p>
-        <p className="text-xs text-muted-foreground">Connect Postgres and run the seed to populate data.</p>
+        <p className="text-xs text-muted-foreground">
+          Connect Postgres and run the seed to populate data.
+        </p>
       </div>
     );
   }
@@ -174,6 +185,7 @@ export default function Home() {
       </main>
       <SiteFooter />
       <OnboardingTip />
+      <AuthDialog />
       {status === "unauthenticated" && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
           <Button onClick={() => setAuthOpen(true)} className="shadow-lg">
