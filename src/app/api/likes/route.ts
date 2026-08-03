@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
-import { notify } from "@/lib/notify";
+import { createNotification } from "@/lib/notify";
 
 export async function POST(req: Request) {
   try {
@@ -22,8 +22,8 @@ export async function POST(req: Request) {
     const count = await db.like.count({ where: { postId } });
 
     const post = await db.post.findUnique({ where: { id: postId }, select: { authorId: true, title: true } });
-    if (post) {
-      await notify({
+    if (post && post.authorId !== user.id) {
+      await createNotification({
         userId: post.authorId,
         type: "like",
         actorId: user.id,
