@@ -9,9 +9,11 @@ export async function GET() {
     const notifications = await db.notification.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
-      take: 40,
+      take: 30,
     });
-    const unread = notifications.filter((n) => !n.read).length;
+    const unread = await db.notification.count({
+      where: { userId: user.id, read: false },
+    });
     return NextResponse.json({ notifications, unread });
   } catch (e) {
     console.error("[notifications GET]", e);
@@ -19,22 +21,14 @@ export async function GET() {
   }
 }
 
-export async function PATCH(req: Request) {
+export async function PATCH() {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const body = await req.json().catch(() => ({}));
-    if (body.all) {
-      await db.notification.updateMany({
-        where: { userId: user.id, read: false },
-        data: { read: true },
-      });
-    } else if (body.id) {
-      await db.notification.updateMany({
-        where: { id: body.id, userId: user.id },
-        data: { read: true },
-      });
-    }
+    await db.notification.updateMany({
+      where: { userId: user.id, read: false },
+      data: { read: true },
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("[notifications PATCH]", e);

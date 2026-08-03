@@ -31,7 +31,9 @@ export async function GET(req: Request) {
   const allQuotes = [...LOVE_QUOTES, ...PSYCHOLOGY_QUOTES];
   const ql = q.toLowerCase();
   const quotes = allQuotes
-    .filter((qt) => qt.text.toLowerCase().includes(ql) || qt.author.toLowerCase().includes(ql))
+    .filter(
+      (qt) => qt.text.toLowerCase().includes(ql) || qt.author.toLowerCase().includes(ql)
+    )
     .slice(0, 4)
     .map((qt, i) => ({ ...qt, id: `q-${i}` }));
 
