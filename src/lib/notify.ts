@@ -1,26 +1,27 @@
 import { db } from "@/lib/db";
 
-export async function createNotification(opts: {
+export async function notify(params: {
   userId: string;
-  type: string;
-  message: string;
+  type: "like" | "comment" | "message" | "admin";
   actorId?: string;
   actorUsername?: string;
   postId?: string;
   postTitle?: string;
   conversationId?: string;
+  message: string;
 }) {
   try {
+    if (params.actorId && params.actorId === params.userId) return;
     await db.notification.create({
       data: {
-        userId: opts.userId,
-        type: opts.type,
-        message: opts.message,
-        actorId: opts.actorId,
-        actorUsername: opts.actorUsername,
-        postId: opts.postId,
-        postTitle: opts.postTitle,
-        conversationId: opts.conversationId,
+        userId: params.userId,
+        type: params.type,
+        actorId: params.actorId ?? null,
+        actorUsername: params.actorUsername ?? null,
+        postId: params.postId ?? null,
+        postTitle: params.postTitle ?? null,
+        conversationId: params.conversationId ?? null,
+        message: params.message,
       },
     });
   } catch (e) {
