@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/avatar";
 import { api, timeAgo } from "@/lib/client";
+import { QuotesView } from "@/components/views/quotes-view";
+import { QuizView } from "@/components/views/quiz-view";
 import { Heart, BookOpen, MessageCircle, Sparkles, Quote } from "lucide-react";
 
 function FeedPlaceholder() {
@@ -85,28 +87,6 @@ function ViewShell({
   );
 }
 
-function QuotesMini() {
-  const [quotes, setQuotes] = useState<any[]>([]);
-  useEffect(() => {
-    api<{ quotes: any[] }>("/api/quotes?count=4")
-      .then((d) => setQuotes(d.quotes || []))
-      .catch(() => {});
-  }, []);
-  if (!quotes.length) return <p className="text-muted-foreground">Loading quotes…</p>;
-  return (
-    <div className="space-y-4">
-      {quotes.map((q, i) => (
-        <Card key={i}>
-          <CardContent className="pt-6">
-            <p className="italic text-foreground/90">“{q.text}”</p>
-            <p className="mt-2 text-sm text-muted-foreground">— {q.author}</p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 export default function Home() {
   const { status } = useSession();
   const { view, setAuthOpen } = useAppStore();
@@ -150,16 +130,8 @@ export default function Home() {
             <p className="text-muted-foreground">Direct messages appear here when you are signed in.</p>
           </ViewShell>
         )}
-        {view === "quiz" && (
-          <ViewShell title="Love Language Quiz" icon={Sparkles}>
-            <p className="text-muted-foreground">Quiz coming soon.</p>
-          </ViewShell>
-        )}
-        {view === "quotes" && (
-          <ViewShell title="Quotes" icon={Quote}>
-            <QuotesMini />
-          </ViewShell>
-        )}
+        {view === "quiz" && <QuizView />}
+        {view === "quotes" && <QuotesView />}
         {view === "admin" && (
           <ViewShell title="Admin" icon={Heart}>
             <p className="text-muted-foreground">Admin tools require an ADMIN account.</p>
