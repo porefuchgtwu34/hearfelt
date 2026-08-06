@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { generateInsight } from "@/lib/insights";
+import { dbRequired, handleRouteError } from "@/lib/api-error";
 
 export async function GET() {
+  const missing = dbRequired();
+  if (missing) return missing;
+
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -14,20 +18,47 @@ export async function GET() {
     });
     return NextResponse.json({ entries });
   } catch (e) {
-    console.error("[journal GET]", e);
-    return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
+    return handleRouteError("journal GET", e);
   }
 }
 
 export async function POST(req: Request) {
+  const missing = dbRequired();
+  if (missing) return missing;
+
   try {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Please log in to use your journal." }, { status: 401 });
-    const { mood, title, content } = await req.json();
-    if (!content || typeof content !== "string" || content.trim().length < 3) {
-      return NextResponse.json({ error: "Write a little more to reflect on." }, { status: 400 });
+    if (!user) {
+      return NextResponse.json(
+        { error: "Please log in to use your journal." },
+        { status: 401 }
+      );
     }
-    const validMoods = ["joyful", "calm", "anxious", "heartbroken", "grateful", "confused", "hopeful", "lonely"];
+
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
+    const { mood, title, content } = body;
+    if (!content || typeof content !== "string" || content.trim().length < 3) {
+      return NextResponse.json(
+        { error: "Write a little more to reflect on." },
+        { status: 400 }
+      );
+    }
+    const validMoods = [
+      "joyful",
+      "calm",
+      "anxious",
+      "heartbroken",
+      "grateful",
+      "confused",
+      "hopeful",
+      "lonely",
+    ];
     const moodVal = validMoods.includes(mood) ? mood : "calm";
 
     const insight = generateInsight(moodVal, content);
@@ -42,7 +73,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(entry);
   } catch (e) {
-    console.error("[journal POST]", e);
-    return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
+    return handleRouteError("journal POST", e);
   }
 }

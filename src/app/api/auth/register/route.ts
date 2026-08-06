@@ -2,16 +2,30 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { dbRequired, handleRouteError } from "@/lib/api-error";
 
 const registerSchema = z.object({
-  username: z.string().min(3).max(24).regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers and underscores"),
+  username: z
+    .string()
+    .min(3)
+    .max(24)
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers and underscores"),
   email: z.string().email(),
   password: z.string().min(6).max(72),
 });
 
 export async function POST(req: Request) {
+  const missing = dbRequired();
+  if (missing) return missing;
+
   try {
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
     const parsed = registerSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -29,9 +43,15 @@ export async function POST(req: Request) {
     });
     if (existing) {
       if (existing.email === lowerEmail) {
-        return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
+        return NextResponse.json(
+          { error: "An account with this email already exists." },
+          { status: 409 }
+        );
       }
-      return NextResponse.json({ error: "That username is already taken." }, { status: 409 });
+      return NextResponse.json(
+        { error: "That username is already taken." },
+        { status: 409 }
+      );
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -51,7 +71,6 @@ export async function POST(req: Request) {
       user: { id: user.id, username: user.username, email: user.email },
     });
   } catch (e) {
-    console.error("[register]", e);
-    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    return handleRouteError("register", e);
   }
 }

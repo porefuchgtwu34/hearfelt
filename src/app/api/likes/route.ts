@@ -2,12 +2,24 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { createNotification } from "@/lib/notify";
+import { dbRequired, handleRouteError } from "@/lib/api-error";
 
 export async function POST(req: Request) {
+  const missing = dbRequired();
+  if (missing) return missing;
+
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Please log in." }, { status: 401 });
-    const { postId } = await req.json();
+
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
+    const { postId } = body;
     if (!postId) return NextResponse.json({ error: "Missing postId" }, { status: 400 });
 
     const existing = await db.like.findUnique({
@@ -18,25 +30,32 @@ export async function POST(req: Request) {
       const count = await db.like.count({ where: { postId } });
       return NextResponse.json({ liked: false, count });
     }
+
     await db.like.create({ data: { postId, userId: user.id } });
     const count = await db.like.count({ where: { postId } });
 
-    const post = await db.post.findUnique({ where: { id: postId }, select: { authorId: true, title: true } });
-    if (post && post.authorId !== user.id) {
-      await createNotification({
-        userId: post.authorId,
-        type: "like",
-        actorId: user.id,
-        actorUsername: user.username,
-        postId,
-        postTitle: post.title,
-        message: `${user.username} liked your post "${post.title.slice(0, 40)}"`,
+    try {
+      const post = await db.post.findUnique({
+        where: { id: postId },
+        select: { authorId: true, title: true },
       });
+      if (post && post.authorId !== user.id) {
+        await createNotification({
+          userId: post.authorId,
+          type: "like",
+          actorId: user.id,
+          actorUsername: user.username,
+          postId,
+          postTitle: post.title,
+          message: `${user.username} liked your post "${post.title.slice(0, 40)}"`,
+        });
+      }
+    } catch (notifyErr) {
+      console.error("[like notify]", notifyErr);
     }
 
     return NextResponse.json({ liked: true, count });
   } catch (e) {
-    console.error("[like]", e);
-    return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
+    return handleRouteError("like", e);
   }
 }

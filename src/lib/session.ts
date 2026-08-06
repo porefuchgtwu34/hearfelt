@@ -12,20 +12,27 @@ export type SafeUser = {
 };
 
 export async function getCurrentUser(): Promise<SafeUser | null> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return null;
-  const user = await db.user.findUnique({
-    where: { id: (session.user as any).id },
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      role: true,
-      bio: true,
-      avatarColor: true,
-    },
-  });
-  return user;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) return null;
+    if (!process.env.DATABASE_URL) return null;
+
+    const user = await db.user.findUnique({
+      where: { id: (session.user as any).id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        bio: true,
+        avatarColor: true,
+      },
+    });
+    return user;
+  } catch (e) {
+    console.error("[getCurrentUser]", e);
+    return null;
+  }
 }
 
 export async function requireUser(): Promise<SafeUser> {
