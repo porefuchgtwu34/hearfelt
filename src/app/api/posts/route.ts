@@ -3,15 +3,34 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 
 const PAGE_SIZE = 6;
-const VALID_EMOJIS = ["heart", "hug", "support", "insight"];
+
+function emptyFeed(page = 1) {
+  return NextResponse.json({
+    posts: [],
+    page,
+    pageSize: PAGE_SIZE,
+    totalPages: 1,
+    total: 0,
+  });
+}
 
 export async function GET(req: Request) {
+  if (!process.env.DATABASE_URL) {
+    return emptyFeed();
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const category = searchParams.get("category") || undefined;
     const q = searchParams.get("q") || undefined;
-    const me = await getCurrentUser();
+
+    let me = null;
+    try {
+      me = await getCurrentUser();
+    } catch {
+      me = null;
+    }
 
     const where: any = {
       AND: [
@@ -44,12 +63,22 @@ export async function GET(req: Request) {
     let likedIds: string[] = [];
     let bookmarkedIds: string[] = [];
     if (me) {
-      const [likes, bookmarks] = await Promise.all([
-        db.like.findMany({ where: { userId: me.id, postId: { in: posts.map((p) => p.id) } }, select: { postId: true } }),
-        db.bookmark.findMany({ where: { userId: me.id, postId: { in: posts.map((p) => p.id) } }, select: { postId: true } }),
-      ]);
-      likedIds = likes.map((l) => l.postId);
-      bookmarkedIds = bookmarks.map((b) => b.postId);
+      try {
+        const [likes, bookmarks] = await Promise.all([
+          db.like.findMany({
+            where: { userId: me.id, postId: { in: posts.map((p) => p.id) } },
+            select: { postId: true },
+          }),
+          db.bookmark.findMany({
+            where: { userId: me.id, postId: { in: posts.map((p) => p.id) } },
+            select: { postId: true },
+          }),
+        ]);
+        likedIds = likes.map((l) => l.postId);
+        bookmarkedIds = bookmarks.map((b) => b.postId);
+      } catch {
+        // ignore
+      }
     }
 
     return NextResponse.json({
@@ -67,11 +96,18 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     console.error("[posts GET]", e);
-    return NextResponse.json({ error: "Something went wrong." }, { status: 500 });
+    return emptyFeed();
   }
 }
 
 export async function POST(req: Request) {
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      { error: "Database not configured." },
+      { status: 503 }
+    );
+  }
+
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Please log in to post." }, { status: 401 });

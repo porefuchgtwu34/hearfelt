@@ -16,33 +16,20 @@ import { Heart, BookOpen, MessageCircle, Sparkles, Quote } from "lucide-react";
 function FeedPlaceholder() {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     api<{ posts: any[] }>("/api/posts?page=1")
       .then((d) => setPosts(d.posts || []))
-      .catch((e) => setError(e.message || "Could not load posts"))
+      .catch(() => setPosts([]))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <p className="text-muted-foreground text-center py-12">Loading feed…</p>;
-  if (error)
-    return (
-      <div className="text-center py-12 space-y-2">
-        <p className="text-destructive">{error}</p>
-        <p className="text-xs text-muted-foreground">
-          If this is a database error, add DATABASE_URL in Vercel and run migrations.
-        </p>
-      </div>
-    );
   if (!posts.length) {
     return (
       <div className="text-center py-16 space-y-3">
         <Heart className="h-10 w-10 text-primary/40 mx-auto" />
         <p className="text-muted-foreground">No posts yet. Be the first to share.</p>
-        <p className="text-xs text-muted-foreground">
-          Connect Postgres and run the seed to populate data.
-        </p>
       </div>
     );
   }
@@ -155,21 +142,17 @@ export default function Home() {
         )}
         {view === "journal" && (
           <ViewShell title="Journal" icon={BookOpen}>
-            <p className="text-muted-foreground">
-              Private mood journal — connect Postgres and sign in to use fully.
-            </p>
+            <p className="text-muted-foreground">Private mood journal — sign in to use fully.</p>
           </ViewShell>
         )}
         {view === "messages" && (
           <ViewShell title="Messages" icon={MessageCircle}>
-            <p className="text-muted-foreground">
-              Direct messages will appear here once the DB is connected.
-            </p>
+            <p className="text-muted-foreground">Direct messages appear here when you are signed in.</p>
           </ViewShell>
         )}
         {view === "quiz" && (
           <ViewShell title="Love Language Quiz" icon={Sparkles}>
-            <p className="text-muted-foreground">Quiz API is ready. Full interactive UI next.</p>
+            <p className="text-muted-foreground">Quiz coming soon.</p>
           </ViewShell>
         )}
         {view === "quotes" && (
